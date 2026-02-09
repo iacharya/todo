@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>To-Do - FreePlay</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  background:#0e0e1a;color:#e0e0e0;
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;padding:20px 12px;
+}
+
+h1{font-size:1.3rem;font-weight:800;color:#2ecc71;letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px}
+.sub{font-size:.55rem;color:#555;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+
+.container{width:100%;max-width:450px}
+
+/* INPUT */
+.input-row{
+  display:flex;gap:8px;margin-bottom:16px;
+}
+.input-row input{
+  flex:1;font-family:inherit;font-size:.95rem;
+  padding:12px 16px;border:2px solid #1e1e36;border-radius:12px;
+  background:#161627;color:#e0e0e0;outline:none;
+  transition:border-color 0.2s;
+}
+.input-row input:focus{border-color:#2ecc71}
+.input-row input::placeholder{color:#444}
+.input-row button{
+  font-family:inherit;font-size:1.2rem;font-weight:800;
+  width:48px;border:none;border-radius:12px;
+  background:#2ecc71;color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.input-row button:active{background:#27ae60}
+
+/* FILTERS */
+.filters{display:flex;gap:6px;margin-bottom:16px}
+.filters button{
+  font-family:inherit;font-size:.65rem;font-weight:700;
+  padding:5px 12px;border:none;border-radius:16px;
+  background:#161627;color:#666;cursor:pointer;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.filters button.on{background:#2ecc71;color:#fff}
+
+/* STATS */
+.stats{
+  display:flex;gap:16px;margin-bottom:16px;
+  font-size:.7rem;color:#555;
+}
+.stats span strong{color:#2ecc71}
+
+/* TASKS */
+.tasks{display:flex;flex-direction:column;gap:6px}
+.task{
+  display:flex;align-items:center;gap:12px;
+  background:#161627;border-radius:12px;padding:14px 16px;
+  transition:opacity 0.3s,transform 0.2s;
+}
+.task.done{opacity:0.4}
+.task.done .task-text{text-decoration:line-through;color:#555}
+
+.check{
+  width:24px;height:24px;border-radius:50%;
+  border:2px solid #333;background:transparent;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all 0.2s;font-size:.7rem;
+}
+.check.checked{background:#2ecc71;border-color:#2ecc71;color:#fff}
+
+.task-text{flex:1;font-size:.9rem;line-height:1.4}
+
+.task-del{
+  width:28px;height:28px;border:none;border-radius:8px;
+  background:transparent;color:#444;cursor:pointer;
+  font-size:.9rem;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.task-del:active{color:#e94560}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px 0;color:#333}
+.empty .icon{font-size:2.5rem;margin-bottom:8px}
+.empty p{font-size:.85rem}
+
+/* CLEAR */
+.clear-done{
+  font-family:inherit;font-size:.7rem;font-weight:700;
+  padding:8px 16px;border:none;border-radius:16px;
+  background:#1a1a2e;color:#e94560;cursor:pointer;
+  margin-top:12px;
+}
+</style>
+</head>
+<body>
+
+<h1>To-Do</h1>
+<div class="sub">FreePlay · No Ads</div>
+
+<div class="container">
+  <div class="input-row">
+    <input type="text" id="inp" placeholder="What needs to be done?" autocomplete="off">
+    <button id="addBtn">+</button>
+  </div>
+
+  <div class="filters">
+    <button class="on" data-f="all">All</button>
+    <button data-f="active">Active</button>
+    <button data-f="done">Done</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="tasks" id="tasks"></div>
+  <div style="text-align:center">
+    <button class="clear-done" id="clearDone" style="display:none">Clear completed</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var todos=[],filter='all',nextId=1;
+
+  var inp=document.getElementById('inp');
+  var tasksEl=document.getElementById('tasks');
+  var statsEl=document.getElementById('stats');
+  var clearBtn=document.getElementById('clearDone');
+
+  /* Try to load from localStorage */
+  try{
+    var saved=localStorage.getItem('freeplay_todos');
+    if(saved){todos=JSON.parse(saved);nextId=todos.length?Math.max.apply(null,todos.map(function(t){return t.id;}))+1:1;}
+  }catch(e){}
+
+  function save(){
+    try{localStorage.setItem('freeplay_todos',JSON.stringify(todos));}catch(e){}
+  }
+
+  function addTodo(){
+    var text=inp.value.trim();
+    if(!text)return;
+    todos.unshift({id:nextId++,text:text,done:false});
+    inp.value='';
+    save();render();
+  }
+
+  function toggleTodo(id){
+    for(var i=0;i<todos.length;i++){
+      if(todos[i].id===id){todos[i].done=!todos[i].done;break;}
+    }
+    save();render();
+  }
+
+  function deleteTodo(id){
+    todos=todos.filter(function(t){return t.id!==id;});
+    save();render();
+  }
+
+  function render(){
+    var filtered=todos;
+    if(filter==='active')filtered=todos.filter(function(t){return !t.done;});
+    if(filter==='done')filtered=todos.filter(function(t){return t.done;});
+
+    tasksEl.innerHTML='';
+
+    if(filtered.length===0){
+      tasksEl.innerHTML='<div class="empty"><div class="icon">✨</div><p>'+(todos.length===0?'Add your first task!':'No tasks here')+'</p></div>';
+    }else{
+      for(var i=0;i<filtered.length;i++){
+        var t=filtered[i];
+        var div=document.createElement('div');
+        div.className='task'+(t.done?' done':'');
+
+        var chk=document.createElement('div');
+        chk.className='check'+(t.done?' checked':'');
+        chk.textContent=t.done?'✓':'';
+        chk.addEventListener('click',(function(id){return function(){toggleTodo(id);};})(t.id));
+
+        var txt=document.createElement('div');
+        txt.className='task-text';
+        txt.textContent=t.text;
+
+        var del=document.createElement('button');
+        del.className='task-del';
+        del.textContent='✕';
+        del.addEventListener('click',(function(id){return function(){deleteTodo(id);};})(t.id));
+
+        div.appendChild(chk);
+        div.appendChild(txt);
+        div.appendChild(del);
+        tasksEl.appendChild(div);
+      }
+    }
+
+    /* Stats */
+    var active=todos.filter(function(t){return !t.done;}).length;
+    var done=todos.filter(function(t){return t.done;}).length;
+    statsEl.innerHTML='<span><strong>'+active+'</strong> active</span><span><strong>'+done+'</strong> completed</span><span><strong>'+todos.length+'</strong> total</span>';
+
+    clearBtn.style.display=done>0?'inline-block':'none';
+
+    /* Filter btns */
+    var fbs=document.querySelector('.filters').children,fi;
+    for(fi=0;fi<fbs.length;fi++)fbs[fi].className=fbs[fi].getAttribute('data-f')===filter?'on':'';
+  }
+
+  /* Events */
+  document.getElementById('addBtn').addEventListener('click',addTodo);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')addTodo();});
+
+  var fbs=document.querySelector('.filters').children,fi;
+  for(fi=0;fi<fbs.length;fi++){
+    fbs[fi].addEventListener('click',(function(b){return function(){
+      filter=b.getAttribute('data-f');render();
+    };})(fbs[fi]));
+  }
+
+  clearBtn.addEventListener('click',function(){
+    todos=todos.filter(function(t){return !t.done;});
+    save();render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
